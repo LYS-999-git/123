@@ -1,0 +1,76 @@
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+library(nycflights13)
+library(ggplot2)
+library(scales)
+library(ggrepel)
+library(patchwork)
+library(worldfootballR)
+```
+
+part 2:
+
+1.Visualize
+
+```{r, message=FALSE, warning=FALSE}
+FB <- 
+  fb_big5_advanced_season_stats(season_end_year=2021,
+                                stat_type="standard",
+                                team_or_player="team") |> 
+  filter(Team_or_Opponent == "team" )
+```
+
+```{r, message=FALSE, warning=FALSE}
+highlight_team <- FB |> 
+  filter(xG_Expected == max(xG_Expected, na.rm = TRUE))
+
+ggplot(FB, aes(x = Poss, y = xG_Expected)) +
+  geom_point(aes(color = Comp), alpha = 0.6, size = 3) +
+  geom_point(data = highlight_team, 
+             aes(x = Poss, y = xG_Expected), color = "red", size = 4) +
+
+  annotate(
+    geom = "label",
+    x = highlight_team$Poss - 4,
+    y = highlight_team$xG_Expected + 3,
+    label = "Highest expected goals among all teams",
+    color = "red",
+    fill = "white",
+    fontface = "bold") +
+
+
+  labs(
+    title = "Linear Relationship Between Possession and Expected Goals",
+    subtitle = "Top 5 European Leagues, 2020–21 Season",
+    caption = "Source: worldfootballR",
+    x = "Possession (%)",
+    y = "Expected Goals (xG)",
+    color = "League") +
+  theme_minimal() +
+  theme(axis.title = element_text(color = "blue", face = "bold"))
+```
+
+\newpage
+
+2.  Model
+
+```{r, message=FALSE, warning=FALSE}
+model <- lm(xG_Expected ~ Poss, data = FB)
+summary(model)
+
+ggplot(FB, aes(x = Poss, y = xG_Expected)) +
+  geom_point(aes(color = Comp), alpha = 0.6, size = 3) +
+  geom_smooth(method = "lm", se = TRUE, color = "darkblue", linewidth = 1) +
+  labs(
+    title = "Linear Relationship Between Possession and Expected Goals",
+    subtitle = "Linear regression with 95% confidence band",
+    caption = "Source: worldfootballR",
+    x = "Possession (%)",
+    y = "Expected Goals (xG)",
+    color = "League") +
+  theme_minimal() +
+  theme(axis.title = element_text(color = "blue", face = "bold"))
+```
+
+Based on the linear regression output, there is a strong positive relationship between possession percentage and expected goals (xG). The model estimates that for every 1 percent increase in possession, a team’s xG increases by approximately 1.40, and this result is statistically significant with a p-value less than 2e-16. The R-squared value is 0.547, meaning about 54.7 percent of the variation in expected goals across teams can be explained by possession. While possession is an important predictor of xG, the remaining variation suggests that other factors such as shot quality, tactics, or finishing also play a role.

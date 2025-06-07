@@ -1,0 +1,102 @@
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(babynames)
+library(stringr)
+library(dplyr)
+library(forcats)
+library(ggplot2)
+library(nycflights13)
+library(lubridate)
+library(readr)
+library(DBI)
+library(dbplyr)
+library(worldfootballR)
+```
+
+Part 2:
+
+1.Tidy
+
+1.1 Is your data tidy?
+
+```{r,message=FALSE}
+df_wide <- read_csv("Thomas-Muller_2020.csv")
+```
+
+Yes, the df_wide dataset is tidy. Each variable has its own column (e.g.: Player, Date), each observation has its own row, and the dataset contains only one type of observational unit: match performance. Therefore, the dataset follows the tidy data principles. However, although the data is tidy, it still contains some missing values (NA) in columns such as Gls_Performance, which may affect downstream analysis. We can use the following code to filter out the NA's.
+
+```{r,eval = FALSE}
+df_wide |> 
+  filter(!is.na(Gls_Performance), !is.na(Ast_Performance)) |> 
+  select(Gls_Performance, Ast_Performance)
+```
+
+1.2 Long or Wide Format?
+
+The dataset is in wide format: each row represents one match appearance by Thomas Müller, and each statistic (like goals, assists, tackles) is in its own column.
+
+In the following example, I transformed a subset of the data (Gls_Performance, Ast_Performance) into long format, where each row now represents one statistic type and its value, identified by the Date and Competition.
+
+```{r, message=FALSE, warning=FALSE}
+
+df_wide |> 
+  pivot_longer(cols = c(Gls_Performance, Ast_Performance),
+               names_to = "Stat_Type", values_to = "Value") |> 
+  select(Player, Date, Opponent, Stat_Type, Value) |> 
+  slice_head(n = 10)
+```
+
+\newpage
+
+2.  Transform
+
+2.1 Use regular expressions and string manipulation to convert the surname of each athlete to all capital letters.
+
+```{r, message=FALSE, warning=FALSE}
+FB_player <- 
+  fb_big5_advanced_season_stats(season_end_year=2021,
+                                stat_type="standard",
+                                team_or_player="player")
+
+FB_player |> 
+  mutate(Player = str_replace(Player, "(\\w+)$",
+                              function(x) str_to_upper(x))) |>
+  slice_head(n = 10) |> 
+  select(Player)
+```
+
+2.2 If applicable, perform appropriate date-time manipulation to have such variables in ISO 8601 format.
+
+```{r, message=FALSE, warning=FALSE}
+
+df_wide_new <- df_wide |> 
+  mutate(Date_alt = format(Date, "%m-%d-%Y"))
+df_wide_new |> 
+  mutate(Date_iso8601 = mdy(Date_alt)) |> 
+  select(Player, Date, Date_alt, Date_iso8601) |> 
+  slice_head(n = 10)
+
+```
+
+In the original dataset, the Date column was already in ISO 8601 format (YYYY-MM-DD). To demonstrate date-time manipulation, I first converted the Date column into a non-ISO format ("%m-%d-%Y", e.g: 08-03-2019) using the format() function. I then parsed that reformatted string back into ISO 8601 format using mdy().
+
+2.3 If applicable, identify missing values in the dataset and interpret why these values may be missing.
+
+```{r}
+colSums(is.na(df_wide))
+```
+
+The output reveals which columns contain missing values and how many. These missing values might occur for several reasons:
+
+The player (Thomas Müller) may not have participated in certain matches, so statistics like goals, assists, or minutes are not recorded.
+
+2.4 Use logical conditions (boolean variables) to filter rows based on a specific criterion.
+
+```{r}
+df_wide |> 
+  filter(Gls_Performance >= 1) |> 
+  select(Player, Date, Comp, Result, Gls_Performance) |> 
+  arrange(desc(Gls_Performance))
+```
+
+This Boolean filtering helps identify matches where Müller contributed directly to the team's scoreline. It allows for performance-focused analysis by narrowing down to impactful games. For example, I observe that his top scoring performance (2 goals) was in a Champions League match against Barcelona on August 14, 2020.

@@ -1,0 +1,117 @@
+```{r, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(tibble)
+library(tidyr)
+library(tidyverse)
+library(worldfootballR)
+library(palmerpenguins)
+library(nycflights13)
+```
+
+Part Two:
+
+1.  Make a scatter plot of 2 continuous variables and describe their relationship. Then add additional variables as aesthetics to either size (numeric) or shape (categorical)
+
+```{r, message=FALSE, warning=FALSE}
+FB <- 
+  fb_big5_advanced_season_stats(season_end_year=2021,
+                                stat_type="standard",
+                                team_or_player="team") |> 
+  filter(Team_or_Opponent == "team" )
+```
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(FB, aes(x = Poss, y = xG_Expected)) +
+  geom_point(alpha = 0.6, mapping = aes(color = Comp, shape = Comp)) +
+  labs(title = "Possesion percentage vs Expected goals", 
+       x = "Possession(%)", 
+       y = "Expected goals") +
+  theme_minimal()
+```
+
+The scatter plot shows a positive relationship between possession percentage and expected goals: teams with higher possession generally create more scoring chances. Color and shape were used to show differences between competitions. This helps visualize how possession and scoring opportunities vary across leagues.
+
+\newpage
+
+2.  Use a different geom to visualize the relationship between 1 continuous and 1 categorical variable in your dataset
+
+```{r, message=FALSE, warning=FALSE}
+AGE <- FB |> 
+  group_by(Comp) |> 
+  summarise(Age)
+ggplot(AGE, aes(x = Comp, y = Age)) +
+  geom_boxplot(fill = "green") +
+  labs(title = "League vs. Age", x = "League names", y = "Age") +
+  theme_minimal()
+```
+
+A boxplot was used to show the relationship between league (categorical) and player age (continuous). The plot compares the distribution of ages across different leagues, making it easy to see differences in typical player age between competitions.
+
+\newpage
+
+3.  Make a histogram to visualize the distribution of a continuous variable in your dataset
+
+```{r, message=FALSE, warning=FALSE}
+FB_player <- 
+  fb_big5_advanced_season_stats(season_end_year=2021,
+                                stat_type="standard",
+                                team_or_player="player")
+```
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(FB_player, aes(x = as.numeric(Age))) +
+  geom_histogram(color = "purple", fill = "Turquoise") +
+  labs(title = "Distribution of players by age ", 
+       x = "Age", y = "Number of players") +
+  theme_minimal()
+```
+
+A histogram was used to show the distribution of player ages. Most players are between 20 and 30 years old, with the distribution peaking around the mid-20s and tapering off at older ages.
+
+\newpage
+
+4.  Create a data manipulation pipeline that selects a subset of columns, performs an inter- mediate calculation, filters the rows, and sorts the resulting output. What question are you trying to answer with it? in relation to your dataset?
+
+```{r, message=FALSE, warning=FALSE}
+FB_player |>
+  select(Squad, Player, Age, xG_Expected, xAG_Expected) |>
+  mutate(xG_plus_xA = xG_Expected + xAG_Expected) |>
+  filter(Age <= 23) |>
+  arrange(desc(xG_plus_xA)) |> 
+  slice_max(xG_plus_xA, prop = 0.01)
+```
+
+This answers the question: Which young players are making the biggest impact in creating and finishing scoring opportunities? It helps identify top-performing young talent based on expected goals and assists.
+
+In this pipeline, I selected the columns Squad, Player, Age, xG_Expected, and xAG_Expected to focus on player performance and age. I created a new column, xG_plus_xA, by adding expected goals (xG_Expected) and expected assists (xAG_Expected), which gives an overall measure of a player's attacking contribution. I then filtered to keep only players aged 23 or younger, and sorted the results by the highest total attacking contribution.
+
+\newpage
+
+5.  Use a group_by and aggregation (i.e. summarise) to calculate a summary statistic of your choice for your dataset. What does this mean in relation to your data?
+
+```{r, message=FALSE, warning=FALSE}
+FB_player |> 
+  group_by(Squad) |> 
+  summarise(avg_expected_goal = mean(xG_Expected)) |> 
+  arrange(desc(avg_expected_goal))
+```
+
+By grouping the data by team and calculating the average expected goals (xG_Expected), we can compare how effective each squad is at creating scoring opportunities. Teams like Barcelona and Inter have the highest averages, suggesting their players generate more chances per match on average compared to other teams.
+
+\newpage
+
+6.  Write code to read and write your data set using two types of delimiters.
+
+```{r, message=FALSE, warning=FALSE}
+readr::write_csv(FB, "FB_big5_standard_teams.csv")
+FB_comma <- readr::read_csv("FB_big5_standard_teams.csv")
+```
+
+```{r, message=FALSE, warning=FALSE}
+readr::write_delim(FB, "FB_big5_standard_teams_pipe.txt", delim = "|")
+FB_pipe <- readr::read_delim("FB_big5_standard_teams_pipe.txt", delim = "|")
+```
+
+I obtained the dataset by using the fb_big5_advanced_season_stats function from the worldfootballR package. To practice reading and writing with different delimiters, I first saved the data as a CSV file and then read it back in. Next, I saved the same data using a pipe ("\|") delimiter and read it back as well.
